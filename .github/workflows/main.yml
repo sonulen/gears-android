@@ -2,10 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
-    # Release tag format is [module-name]-v[androidx-version]-[ktx-version]
-    # For example: fragment-ktx-v1.3.5-0
-    tags: ['*-ktx-v*-[0-9]+']
+    branches: [main, feature/AND-81-compose-ktx]
+    # Release tag format is [module-name]-v[version]-[sub-version]
+    # For example: fragment-ktx-v1.3.5-0, compose-gears-v.1.1.1-1
+    tags:
+      - '*-ktx-v*-[0-9]+'
+      - '*-gears-v*-[0-9]+'
   pull_request:
     branches: [main]
 
@@ -34,7 +36,7 @@ jobs:
         run: ./gradlew detektAll detektReleaseAll
 
   publish:
-    name: Publish KTX
+    name: Publish gears
     needs: check
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
@@ -53,13 +55,17 @@ jobs:
         id: get-module-name
         run: |
           tag=${GITHUB_REF#refs/tags/}
-          echo "result=${tag/-v*}" >> "$GITHUB_OUTPUT"
+          module=$(echo "${tag/-*-v*}")
+          namespace=$(echo $tag | grep -o -P '(?<=-).*(?=-v)')
+          echo "module=$module" >> "$GITHUB_OUTPUT"
+          echo "namespace=$namespace" >> "$GITHUB_OUTPUT"
+          echo $GITHUB_OUTPUT
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
       - name: Run Publish
-        run: ./gradlew :ktx:${{ steps.get-module-name.outputs.result }}:publish
+        run: echo namespace = ${{ steps.get-module-name.outputs.namespace }} module = ${{ steps.get-module-name.outputs.module }}
         env:
           ORG_GRADLE_PROJECT_githubPackagesUsername: ${{ github.actor }}
           ORG_GRADLE_PROJECT_githubPackagesPassword: ${{ secrets.GITHUB_TOKEN }}
